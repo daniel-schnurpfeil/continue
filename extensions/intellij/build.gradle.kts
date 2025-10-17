@@ -62,6 +62,16 @@ dependencies {
     testIntegrationImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
     testIntegrationImplementation("org.kodein.di:kodein-di-jvm:7.20.2")
     testIntegrationImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.1")
+    // Ktor for HTTP client and server
+    implementation("io.ktor:ktor-client-core:2.3.5")
+    implementation("io.ktor:ktor-client-cio:2.3.5")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.5")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.5")
+    implementation("io.ktor:ktor-server-core:2.3.5")
+    implementation("io.ktor:ktor-server-netty:2.3.5")
+
+    // Kotlinx serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }
 
 kotlin {

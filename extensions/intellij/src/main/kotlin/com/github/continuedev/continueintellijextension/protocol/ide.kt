@@ -3,6 +3,31 @@ package com.github.continuedev.continueintellijextension.protocol
 import com.github.continuedev.continueintellijextension.Range
 import com.github.continuedev.continueintellijextension.TerminalOptions
 
+
+// Add these message type constants
+const val MESSAGE_TYPE_MCP_OAUTH_REQUEST = "mcpOAuthRequest"
+const val MESSAGE_TYPE_MCP_OAUTH_CALLBACK = "mcpOAuthCallback"
+const val MESSAGE_TYPE_MCP_GET_CONFIG = "mcpGetConfig"
+
+// Add data classes for messages
+data class McpOAuthRequestMessage(
+    val messageType: String = MESSAGE_TYPE_MCP_OAUTH_REQUEST,
+    val serverName: String,
+//    val oauthConfig: OAuthConfig todo
+)
+
+data class McpOAuthCallbackMessage(
+    val messageType: String = MESSAGE_TYPE_MCP_OAUTH_CALLBACK,
+    val serverName: String,
+    val code: String,
+    val state: String
+)
+
+data class McpConfigMessage(
+    val messageType: String = MESSAGE_TYPE_MCP_GET_CONFIG,
+    val serverName: String
+)
+
 data class GetControlPlaneSessionInfoParams(val silent: Boolean, val useOnboarding: Boolean)
 
 data class WriteFileParams(

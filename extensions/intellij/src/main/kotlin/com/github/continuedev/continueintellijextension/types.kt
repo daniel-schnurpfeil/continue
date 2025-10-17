@@ -20,6 +20,29 @@ data class Position(val line: Int, val character: Int)
 
 data class Range(val start: Position, val end: Position)
 
+data class McpServerAuth(
+    val type: String, // "oauth2"
+    val authorizationUrl: String? = null,
+    val tokenUrl: String? = null,
+    val clientId: String? = null,
+    val clientSecret: String? = null,
+    val scopes: List<String>? = null,
+    val redirectUri: String? = null,
+    val usePKCE: Boolean? = false
+)
+
+data class McpServerConfig(
+    val name: String,
+    val type: String, // "streamable-http"
+    val url: String,
+    val auth: McpServerAuth? = null
+)
+
+data class ContinueConfig(
+    val mcpServers: List<McpServerConfig>? = null,
+    // ... other config fields
+)
+
 data class IdeInfo(
     val ideType: String,
     val name: String,

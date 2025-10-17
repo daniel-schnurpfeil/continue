@@ -4,6 +4,7 @@ import com.github.continuedev.continueintellijextension.*
 import com.github.continuedev.continueintellijextension.activities.ContinuePluginDisposable
 import com.github.continuedev.continueintellijextension.activities.showTutorial
 import com.github.continuedev.continueintellijextension.auth.ContinueAuthService
+import com.github.continuedev.continueintellijextension.auth.McpOAuthService
 import com.github.continuedev.continueintellijextension.browser.ContinueBrowserService.Companion.getBrowser
 import com.github.continuedev.continueintellijextension.editor.DiffStreamService
 import com.github.continuedev.continueintellijextension.editor.EditorUtils
@@ -11,9 +12,11 @@ import com.github.continuedev.continueintellijextension.error.ContinueSentryServ
 import com.github.continuedev.continueintellijextension.protocol.*
 import com.github.continuedev.continueintellijextension.services.ContinueExtensionSettings
 import com.github.continuedev.continueintellijextension.services.ContinuePluginService
+import com.github.continuedev.continueintellijextension.McpServerAuth
 import com.github.continuedev.continueintellijextension.utils.getMachineUniqueID
 import com.github.continuedev.continueintellijextension.utils.uuid
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
@@ -38,7 +41,7 @@ class IdeProtocolClient(
 ) : DumbAware {
     private val ide: IDE = IntelliJIDE(project, continuePluginService)
     private val diffStreamService = project.service<DiffStreamService>()
-
+    private val gson = Gson()
 
     /**
      * Create a dispatcher with limited parallelism to prevent UI freezing.
@@ -59,6 +62,169 @@ class IdeProtocolClient(
                 when (messageType) {
                     "toggleDevTools" -> {
                         project.getBrowser()?.openDevTools()
+                    }
+
+                    "authenticateMcpServer" -> {
+
+                            // Parse dataElement as JsonObject
+                            val jsonData = if (dataElement is JsonObject) {
+                                dataElement
+                            } else {
+                                gson.toJsonTree(dataElement).asJsonObject
+                            }
+
+                            val serverName = jsonData.get("serverName")?.asString
+                            val authConfigJson = jsonData.get("authConfig")?.asJsonObject
+
+                            if (serverName == null || authConfigJson == null) {
+                                respond(mapOf(
+                                    "success" to false,
+                                    "error" to "Missing serverName or authConfig"
+                                ))
+                                return@launch
+                            }
+
+                            // Parse auth configuration
+                            val authConfig = McpServerAuth(
+                                type = authConfigJson.get("type")?.asString ?: "oauth2",
+                                authorizationUrl = authConfigJson.get("authorizationUrl")?.asString,
+                                tokenUrl = authConfigJson.get("tokenUrl")?.asString,
+                                clientId = authConfigJson.get("clientId")?.asString,
+                                clientSecret = authConfigJson.get("clientSecret")?.asString,
+                                scopes = authConfigJson.get("scopes")?.asJsonArray?.map { it.asString },
+                                redirectUri = authConfigJson.get("redirectUri")?.asString,
+                                usePKCE = authConfigJson.get("usePKCE")?.asBoolean ?: false
+                            )
+
+                            // Launch OAuth flow
+                            coroutineScope.launch(Dispatchers.IO) {
+                                val result = McpOAuthService.getInstance(project)
+                                    .authenticate(serverName, authConfig)
+
+                                result.fold(
+                                    onSuccess = { token ->
+                                        respond(mapOf(
+                                            "success" to true,
+                                            "accessToken" to token
+                                        ))
+                                    },
+                                    onFailure = { error ->
+
+                                        respond(mapOf(
+                                            "success" to false,
+                                            "error" to (error.message ?: "Authentication failed")
+                                        ))
+                                    }
+                                )
+                            }
+
+                    }
+
+                    "getMcpAccessToken" -> {
+
+                            val jsonData = if (dataElement is JsonObject) {
+                                dataElement
+                            } else {
+                                gson.toJsonTree(dataElement).asJsonObject
+                            }
+
+                            val serverName = jsonData.get("serverName")?.asString
+
+                            if (serverName == null) {
+                                respond(mapOf(
+                                    "success" to false,
+                                    "error" to "Missing serverName"
+                                ))
+                                return@launch
+                            }
+
+                            val token = McpOAuthService.getInstance(project)
+                                .getAccessToken(serverName)
+
+                            respond(mapOf(
+                                "success" to true,
+                                "accessToken" to token
+                            ))
+
+                    }
+
+                    "refreshMcpToken" -> {
+                                          val jsonData = if (dataElement is JsonObject) {
+                                dataElement
+                            } else {
+                                gson.toJsonTree(dataElement).asJsonObject
+                            }
+
+                            val serverName = jsonData.get("serverName")?.asString
+                            val authConfigJson = jsonData.get("authConfig")?.asJsonObject
+
+                            if (serverName == null || authConfigJson == null) {
+                                respond(mapOf(
+                                    "success" to false,
+                                    "error" to "Missing serverName or authConfig"
+                                ))
+                                return@launch
+                            }
+
+                            val authConfig = McpServerAuth(
+                                type = authConfigJson.get("type")?.asString ?: "oauth2",
+                                authorizationUrl = authConfigJson.get("authorizationUrl")?.asString,
+                                tokenUrl = authConfigJson.get("tokenUrl")?.asString,
+                                clientId = authConfigJson.get("clientId")?.asString,
+                                clientSecret = authConfigJson.get("clientSecret")?.asString,
+                                scopes = authConfigJson.get("scopes")?.asJsonArray?.map { it.asString },
+                                redirectUri = authConfigJson.get("redirectUri")?.asString,
+                                usePKCE = authConfigJson.get("usePKCE")?.asBoolean ?: false
+                            )
+
+                            coroutineScope.launch(Dispatchers.IO) {
+                                val result = McpOAuthService.getInstance(project)
+                                    .refreshToken(serverName, authConfig)
+
+                                result.fold(
+                                    onSuccess = { token ->
+                                        respond(mapOf(
+                                            "success" to true,
+                                            "accessToken" to token
+                                        ))
+                                    },
+                                    onFailure = { error ->
+
+                                        respond(mapOf(
+                                            "success" to false,
+                                            "error" to (error.message ?: "Token refresh failed")
+                                        ))
+                                    }
+                                )
+                            }
+
+                    }
+
+                    "clearMcpTokens" -> {
+
+                            val jsonData = if (dataElement is JsonObject) {
+                                dataElement
+                            } else {
+                                gson.toJsonTree(dataElement).asJsonObject
+                            }
+
+                            val serverName = jsonData.get("serverName")?.asString
+
+                            if (serverName == null) {
+                                respond(mapOf(
+                                    "success" to false,
+                                    "error" to "Missing serverName"
+                                ))
+                                return@launch
+                            }
+
+                            McpOAuthService.getInstance(project)
+                                .clearTokens(serverName)
+
+                            respond(mapOf(
+                                "success" to true
+                            ))
+
                     }
 
                     "showTutorial" -> {
@@ -470,6 +636,22 @@ class IdeProtocolClient(
                 ide.showToast(ToastType.ERROR, exceptionMessage)
             }
         }
+    }
+
+    /**
+     * Parse auth configuration from JSON to McpServerAuth object
+     */
+    private fun parseAuthConfig(authConfigJson: JsonObject): McpServerAuth {
+        return McpServerAuth(
+            type = authConfigJson.get("type")?.asString ?: "oauth2",
+            authorizationUrl = authConfigJson.get("authorizationUrl")?.asString,
+            tokenUrl = authConfigJson.get("tokenUrl")?.asString,
+            clientId = authConfigJson.get("clientId")?.asString,
+            clientSecret = authConfigJson.get("clientSecret")?.asString,
+            scopes = authConfigJson.get("scopes")?.asJsonArray?.map { it.asString },
+            redirectUri = authConfigJson.get("redirectUri")?.asString,
+            usePKCE = authConfigJson.get("usePKCE")?.asBoolean ?: false
+        )
     }
 
     fun sendAcceptRejectDiff(accepted: Boolean, stepIndex: Int) {
