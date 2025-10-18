@@ -61,7 +61,7 @@ dependencies {
 
     testIntegrationImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
     testIntegrationImplementation("org.kodein.di:kodein-di-jvm:7.20.2")
-    testIntegrationImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.1")
+    testIntegrationImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.0")
     // Ktor for HTTP client and server
     implementation("io.ktor:ktor-client-core:2.3.5")
     implementation("io.ktor:ktor-client-cio:2.3.5")

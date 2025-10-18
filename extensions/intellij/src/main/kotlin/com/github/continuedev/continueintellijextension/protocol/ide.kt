@@ -9,11 +9,23 @@ const val MESSAGE_TYPE_MCP_OAUTH_REQUEST = "mcpOAuthRequest"
 const val MESSAGE_TYPE_MCP_OAUTH_CALLBACK = "mcpOAuthCallback"
 const val MESSAGE_TYPE_MCP_GET_CONFIG = "mcpGetConfig"
 
-// Add data classes for messages
+// OAuth Configuration data class
+data class OAuthConfig(
+    val type: String = "oauth2",
+    val authorizationUrl: String,
+    val tokenUrl: String,
+    val clientId: String,
+    val clientSecret: String? = null,
+    val scopes: List<String>? = null,
+    val redirectUri: String? = null,
+    val usePKCE: Boolean = false
+)
+
+// Add data classes for MCP messages
 data class McpOAuthRequestMessage(
     val messageType: String = MESSAGE_TYPE_MCP_OAUTH_REQUEST,
     val serverName: String,
-//    val oauthConfig: OAuthConfig todo
+    val oauthConfig: OAuthConfig
 )
 
 data class McpOAuthCallbackMessage(
